@@ -121,7 +121,7 @@ app.get("/userInfo", async (req: JWTRequest, res: express.Response) => {
 					uuid: userUUID,
 					email: email?.emails.address as string,
 					email_verified: email?.emails.verified,
-					locale: 'pt',
+					locale: "pt",
 					roles: ["user"],
 				}
 			});
