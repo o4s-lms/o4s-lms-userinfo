@@ -1,0 +1,24 @@
+.dockerignore
+node_modules
+# debug
+npm-debug.log*
+# production
+build
+# misc
+.DS_Store
+*.pem
+# typescript
+*.tsbuildinfo
+# Envs
+*.env
+!example*.env
+# local env files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+Dockerfile
+.git
+.gitignore
+.github

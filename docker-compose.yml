@@ -1,0 +1,30 @@
+version: '3.9'
+
+services:
+
+  user-info:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: user-info
+    ports:
+      - '8002:8002'
+    environment:
+      DATABASE_LMS_DEV: ${DATABASE_LMS_DEV}
+      DATABASE_LMS_PROD: ${DATABASE_LMS_PROD}
+      DATABASE_AUTH_DEV: ${DATABASE_AUTH_DEV}
+      DATABASE_AUTH_PROD: ${DATABASE_AUTH_PROD}
+      NOVU_BACKEND_URL: ${NOVU_BACKEND_URL}
+      NOVU_API_ENDPOINT: ${NOVU_API_ENDPOINT}
+      NOVU_SOCKET_ENDPOINT: ${NOVU_SOCKET_ENDPOINT}
+      NOVU_CLIENT_APP_ID: ${NOVU_CLIENT_APP_ID}
+      NOVU_API_KEY: ${NOVU_API_KEY}
+      NOVU_PROD_CLIENT_APP_ID: ${NOVU_PROD_CLIENT_APP_ID}
+      NOVU_PROD_API_KEY: ${NOVU_PROD_API_KEY}
+      PUBLIC_HANKO_API: ${PUBLIC_HANKO_API}
+      ADMIN_HANKO_API: ${ADMIN_HANKO_API}
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://joseantcordeiro.hopto.org:8002/health']
+      interval: 30s
+      timeout: 20s
+      retries: 3

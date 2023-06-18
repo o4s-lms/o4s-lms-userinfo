@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/@prisma/client/auth"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_AUTH_DEV")
+}
+
+model audit_logs {
+  id                   String   @id @db.Uuid
+  type                 String   @db.VarChar(255)
+  error                String?  @db.VarChar(255)
+  meta_http_request_id String   @db.VarChar(255)
+  meta_source_ip       String   @db.VarChar(255)
+  meta_user_agent      String   @db.VarChar(255)
+  actor_user_id        String?  @db.Uuid
+  actor_email          String?  @db.VarChar(255)
+  created_at           DateTime @db.Timestamp(6)
+  updated_at           DateTime @db.Timestamp(6)
+
+  @@index([actor_email])
+  @@index([actor_user_id])
+  @@index([meta_http_request_id])
+  @@index([meta_source_ip])
+  @@index([type])
+}
+
+model emails {
+  id             String          @id @db.Uuid
+  user_id        String?         @db.Uuid
+  address        String          @unique(map: "emails_address_idx") @db.VarChar(255)
+  verified       Boolean
+  created_at     DateTime        @db.Timestamp(6)
+  updated_at     DateTime        @db.Timestamp(6)
+  users          users?          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  identities     identities[]
+  passcodes      passcodes[]
+  primary_emails primary_emails?
+}
+
+model identities {
+  id            String   @id @db.Uuid
+  provider_id   String   @db.VarChar(255)
+  provider_name String   @db.VarChar(255)
+  data          String?
+  email_id      String   @db.Uuid
+  created_at    DateTime @db.Timestamp(6)
+  updated_at    DateTime @db.Timestamp(6)
+  emails        emails   @relation(fields: [email_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([provider_id, provider_name], map: "identities_provider_id_provider_name_idx")
+}
+
+model jwks {
+  id         Int      @id @default(autoincrement())
+  key_data   String
+  created_at DateTime @db.Timestamp(6)
+}
+
+model passcodes {
+  id         String   @id @db.Uuid
+  user_id    String   @db.Uuid
+  ttl        Int
+  code       String   @db.VarChar(255)
+  try_count  Int
+  created_at DateTime @db.Timestamp(6)
+  updated_at DateTime @db.Timestamp(6)
+  email_id   String?  @db.Uuid
+  emails     emails?  @relation(fields: [email_id], references: [id], onDelete: Cascade, map: "passcodes_emails_id_fk")
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model password_credentials {
+  id         String   @id @db.Uuid
+  user_id    String   @unique(map: "password_credentials_user_id_idx") @db.Uuid
+  password   String   @db.VarChar(255)
+  created_at DateTime @db.Timestamp(6)
+  updated_at DateTime @db.Timestamp(6)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model primary_emails {
+  id         String   @id @db.Uuid
+  email_id   String   @unique(map: "primary_emails_email_id_idx") @db.Uuid
+  user_id    String   @unique(map: "primary_emails_user_id_idx") @db.Uuid
+  created_at DateTime @db.Timestamp(6)
+  updated_at DateTime @db.Timestamp(6)
+  emails     emails   @relation(fields: [email_id], references: [id])
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model schema_migration {
+  version String @id @unique(map: "schema_migration_version_idx") @db.VarChar(14)
+}
+
+model tokens {
+  id         String   @id @db.Uuid
+  user_id    String   @db.Uuid
+  value      String   @unique(map: "tokens_value_idx") @db.VarChar(255)
+  expires_at DateTime @db.Timestamp(6)
+  created_at DateTime @db.Timestamp(6)
+  updated_at DateTime @db.Timestamp(6)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id                   String                 @id @db.Uuid
+  created_at           DateTime               @db.Timestamp(6)
+  updated_at           DateTime               @db.Timestamp(6)
+  emails               emails[]
+  passcodes            passcodes[]
+  password_credentials password_credentials?
+  primary_emails       primary_emails?
+  tokens               tokens[]
+  webauthn_credentials webauthn_credentials[]
+}
+
+model webauthn_credential_transports {
+  id                     String               @id @db.VarChar(255)
+  name                   String               @db.VarChar(255)
+  webauthn_credential_id String               @db.VarChar(255)
+  webauthn_credentials   webauthn_credentials @relation(fields: [webauthn_credential_id], references: [id], onDelete: Cascade)
+
+  @@unique([name, webauthn_credential_id], map: "webauthn_credential_transports_name_webauthn_credential_id_idx")
+}
+
+model webauthn_credentials {
+  id                             String                           @id @db.VarChar(255)
+  user_id                        String                           @db.Uuid
+  public_key                     String
+  attestation_type               String                           @db.VarChar(255)
+  aaguid                         String                           @db.Uuid
+  sign_count                     Int
+  created_at                     DateTime                         @db.Timestamp(6)
+  updated_at                     DateTime                         @db.Timestamp(6)
+  name                           String?                          @db.VarChar(255)
+  backup_eligible                Boolean                          @default(false)
+  backup_state                   Boolean                          @default(false)
+  last_used_at                   DateTime?                        @db.Timestamp(6)
+  webauthn_credential_transports webauthn_credential_transports[]
+  users                          users                            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model webauthn_session_data {
+  id                                        String                                      @id @db.Uuid
+  challenge                                 String                                      @unique(map: "webauthn_session_data_challenge_idx") @db.VarChar(255)
+  user_id                                   String                                      @db.Uuid
+  user_verification                         String                                      @db.VarChar(255)
+  operation                                 String                                      @db.VarChar(255)
+  created_at                                DateTime                                    @db.Timestamp(6)
+  updated_at                                DateTime                                    @db.Timestamp(6)
+  webauthn_session_data_allowed_credentials webauthn_session_data_allowed_credentials[]
+}
+
+model webauthn_session_data_allowed_credentials {
+  id                       String                @id @db.Uuid
+  credential_id            String                @db.VarChar(255)
+  webauthn_session_data_id String                @db.Uuid
+  created_at               DateTime              @db.Timestamp(6)
+  updated_at               DateTime              @db.Timestamp(6)
+  webauthn_session_data    webauthn_session_data @relation(fields: [webauthn_session_data_id], references: [id], onDelete: Cascade, map: "webauthn_session_data_allowed_cre_webauthn_session_data_id_fkey")
+}

@@ -1,0 +1,235 @@
+generator client {
+  provider        = "prisma-client-js"
+	output  				= "../../node_modules/@prisma/client/lms"
+}
+
+datasource db {
+  provider     			= "mongodb"
+  url          			= env("DATABASE_LMS_DEV")
+}
+
+model User {
+	id          			String    				@id @default(auto()) @map("_id") @db.ObjectId
+	uuid							String 						@unique
+	name							String?
+	given_name				String?
+	family_name			 	String?
+	middle_name			 	String?
+	nickname					String?
+	bio								String?
+  email            	String						@unique
+	email_verified		Boolean?
+	gender						String?
+	locale					 	String?
+  picture          	String?
+	roles							String[]
+	created_at				DateTime 					@default(now())
+	updated_at				DateTime 					@updatedAt
+	member_of         CourseMember[]
+	progress					LessonProgress[]
+	assignments				StudentAssignment[]
+
+	@@map("users")
+}
+
+model CourseMember {
+	id					 	String				@id @default(auto()) @map("_id") @db.ObjectId
+  created_at   	DateTime      @default(now())
+	last_activity DateTime?
+  user_uuid     String
+  course_id     String				@db.ObjectId
+	certification	Boolean				@default(false)
+	facilitation	Boolean				@default(false)
+  role         	CourseRole
+  user         	User          @relation(fields: [user_uuid], references: [uuid], onDelete: Cascade)
+  course       	Course        @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_uuid, course_id])
+	@@index([user_uuid])
+  @@index([course_id])
+
+	@@map("course_members")
+}
+
+model Course {
+  id					String					@id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  slug        String
+	image				String?
+	published   Boolean					@default(false)
+	deleted			Boolean					@default(false)
+	created_by  String
+	created_at	DateTime 				@default(now())
+	modules			Module[]
+  lessons     Lesson[]
+	members     CourseMember[]
+
+	@@map("courses")
+}
+
+model Module {
+	id					 	 String		@id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+	slug           String
+	pos						 Int			@default(0)
+	deleted				 Boolean	@default(false)
+	course_id      String		@db.ObjectId
+	created_by   	 String
+	created_at		 DateTime @default(now())
+	tmp					 	 String?
+	course         Course   @relation(fields: [course_id], references: [id])
+	lessons     	 Lesson[]
+
+  @@index([course_id])
+
+	@@map("modules")
+}
+
+model Lesson {
+  id					 	 String								@id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  slug           String
+	pos						 Int									@default(0)
+  course_id      String								@db.ObjectId
+	module_id      String								@db.ObjectId
+	mobiledoc			 String?
+  html       		 String?
+  status     		 String   						@default("draft")
+	created_by   	 String
+	created_at		 DateTime 						@default(now())
+	updated_at		 DateTime?						@updatedAt
+	deleted				 Boolean							@default(false)
+	tmp					 	 String?
+	course         Course               @relation(fields: [course_id], references: [id])
+	module				 Module								@relation(fields: [module_id], references: [id])
+  completed 		 LessonProgress[]
+	assignments    Assignment[]
+	links          Link[]
+	files          File[]
+
+  @@index([course_id])
+	@@index([module_id])
+
+	@@map("lessons")
+}
+
+model LessonProgress {
+	id						String	 @id @default(auto()) @map("_id") @db.ObjectId
+	user_uuid     String
+	lesson_id   	String	 @db.ObjectId
+	completed_at 	DateTime @default(now())
+  user        	User     @relation(fields: [user_uuid], references: [uuid], onDelete: Cascade)
+  lesson      	Lesson   @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_uuid, lesson_id])
+  @@index([user_uuid])
+  @@index([lesson_id])
+
+	@@map("lesson_progress")
+}
+
+model Assignment {
+	id								 String	 					 @id @default(auto()) @map("_id") @db.ObjectId
+	title              String
+	type               String
+	due								 Int							 @default(0)
+	priority           Int							 @default(0)
+	weight						 Int							 @default(0)
+	lesson_id          String						 @db.ObjectId
+	lesson             Lesson            @relation(fields: [lesson_id], references: [id])
+	files              File[]
+	links              Link[]
+	students 					 StudentAssignment[]
+  
+  @@index([lesson_id])
+
+	@@map("assignments")
+}
+
+model StudentAssignment {
+  id						String	 					@id @default(auto()) @map("_id") @db.ObjectId
+  user_uuid     String
+	assignment_id String						@db.ObjectId
+	started_at   	DateTime         	@default(now())
+	due_date      DateTime?
+  completed_at 	DateTime?
+	status       	AssignmentStatus 	@default(INPROGRESS)
+	user         	User             	@relation(fields: [user_uuid], references: [uuid], onDelete: Cascade)
+  asignment    	Assignment       	@relation(fields: [assignment_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_uuid, assignment_id])
+  @@index([user_uuid])
+  @@index([assignment_id])
+
+	@@map("student_assignments")
+}
+
+model File {
+	id						String	 		@id @default(auto()) @map("_id") @db.ObjectId
+	name         	String
+  key          	String
+	downloads    	Int         @default(0)
+	lesson_id     String?			@db.ObjectId
+	assignment_id	String?			@db.ObjectId
+	created_by   	String
+	created_at		DateTime 		@default(now())
+	updated_at		DateTime?		@updatedAt
+	lesson       	Lesson?     @relation(fields: [lesson_id], references: [id])
+	assignment   	Assignment? @relation(fields: [assignment_id], references: [id])
+
+	@@index([lesson_id])
+	@@index([assignment_id])
+
+	@@map("files")
+}
+
+model Link {
+	id						String	 		@id @default(auto()) @map("_id") @db.ObjectId
+	name         	String
+	ref          	String
+	is_external  	Boolean    	@default(true)
+	clicks       	Int        	@default(0)
+	lesson_id     String?			@db.ObjectId
+	assignment_id	String?			@db.ObjectId
+	created_by   	String
+	created_at		DateTime 		@default(now())
+	updated_at		DateTime?		@updatedAt
+	lesson       	Lesson?     @relation(fields: [lesson_id], references: [id])
+	assignment   	Assignment? @relation(fields: [assignment_id], references: [id])
+
+	@@index([lesson_id])
+	@@index([assignment_id])
+
+	@@map("links")
+}
+
+enum CourseRole {
+  ADMIN
+	AUTHOR
+  TEACHER
+	OBSERVATOR
+  STUDENT
+}
+
+enum AssignmentStatus {
+	INPROGRESS
+	COMPLETE
+	NOTSARTED
+}
+
+enum PaymentType {
+	CC
+	SEPA
+	PAYPAL
+	BOLETO
+	PIX
+}
+
+enum PaymentStatus {
+	PAID
+	WAITING
+	REFUNDED
+	CANCELLED
+	ERROR
+}

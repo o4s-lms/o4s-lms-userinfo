@@ -1,0 +1,313 @@
+generator client {
+  provider        = "prisma-client-js"
+	output   				= "./node_modules/@prisma/client/site"
+}
+
+datasource db {
+  provider     			= "mongodb"
+  url          			= env("DATABASE_SITE_DEV")
+}
+
+model Post {
+	id          			String    @id @default(auto()) @map("_id") @db.ObjectId
+	title							String
+	slug							String		@unique
+	mobiledoc					String?
+	html							String?
+	plaintext					String?
+	feature_image			String?
+	featured					Boolean		@default(false)
+	status						String		@default("draft")
+	language					String		@default("pt")
+	excerpt						String?
+	est_reading_time	Int?
+	author_id 				String
+	published					Boolean   @default(false)
+	published_at			DateTime?
+	published_by			String?
+	created_at				DateTime  @default(now())
+	created_by				String
+	updated_at				DateTime  @updatedAt
+	updated_by				String
+	views							BigInt		@default(0)
+  post_meta         PostMeta?
+	post_tags					PostTag[]
+
+	@@map("posts")
+}
+
+model PostMeta {
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  post_id               String    @unique @db.ObjectId
+  og_image              String?
+  og_title              String?
+  og_description        String?
+  twitter_image         String?
+  twitter_title         String?
+  twitter_description   String?
+  meta_title            String?
+  meta_description      String?
+  email_subject         String?
+  feature_image_alt     String?
+  feature_image_caption String?
+  email_only            Boolean   @default(false)
+  post                  Post      @relation(fields: [post_id], references: [id])
+
+  @@map("posts_meta")
+}
+
+model Tag {
+	id          			String    @id @default(auto()) @map("_id") @db.ObjectId
+	name							String
+	slug							String		@unique
+	description				String?
+	image							String?
+	color							String?
+	hidden						Boolean		@default(false)
+	parent_id 				String?		@db.ObjectId
+	visibility				String		@default("public")
+	language					String		@default("pt")
+	meta_title				String?		
+	meta_description	String?
+	created_at				DateTime  @default(now())
+	created_by				String
+	updated_at				DateTime  @updatedAt
+	updated_by				String
+	tag_posts					PostTag[]
+
+	@@map("tags")
+}
+
+model PostTag {
+	id          String    @id @default(auto()) @map("_id") @db.ObjectId
+	post_id			String		@db.ObjectId
+	tag_id			String		@db.ObjectId
+	post				Post			@relation(fields: [post_id], references: [id], onDelete: Cascade)
+	tag					Tag				@relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
+	@@unique([post_id, tag_id])
+
+	@@map("post_tag")
+}
+
+model Newsletter {
+	id									String		@id @default(auto()) @map("_id") @db.ObjectId
+	name								String
+	description					String
+	feedback_enabled		Boolean 	@default(false)
+	sender_name					String
+	sender_email				String
+	sender_reply_to			String
+	status							String		@default("active")
+	visibility					String		@default("members")
+	subscribe_on_signup	Boolean 	@default(false)
+	locale							String		@default("pt")
+	created_by   				String
+	created_at					DateTime 	@default(now())
+	updated_at					DateTime	@updatedAt
+	members							NewsletterMembers[]
+
+	@@map("newsletters")
+}
+
+model Member {
+	id									String		@id @default(auto()) @map("_id") @db.ObjectId
+	email								String		@unique
+	name								String?
+	email_count					Int				@default(0)
+	email_opened_count	Int				@default(0)
+	email_open_rate			Int				@default(0)
+	locale							String		@default("pt")
+	created_at					DateTime 	@default(now())
+	updated_at					DateTime?	@updatedAt
+	newsletters					NewsletterMembers[]
+
+	@@map("members")
+}
+
+model NewsletterMembers {
+	id						String 			@id @default(auto()) @map("_id") @db.ObjectId
+	member_id			String 			@db.ObjectId
+	newsletter_id	String 			@db.ObjectId
+	member        Member 			@relation(fields: [member_id], references: [id], onDelete: Cascade)
+  newsletter   	Newsletter  @relation(fields: [newsletter_id], references: [id], onDelete: Cascade)
+
+	@@unique([member_id, newsletter_id])
+
+	@@map("newsletters_members")
+}
+
+model Product {
+	id          		String    @id @default(auto()) @map("_id") @db.ObjectId
+	thumbnail				String
+	price						Int
+	tax							Int				@default(0)
+  price_id    		String?
+  currency    		String    @default("eur")
+	image						String
+	title						String
+	description			String
+	slug						String		@unique
+	include					String
+	certification		Boolean		@default(false)
+	facilitation		Boolean		@default(false)
+	html						String?
+	order						Int
+  active      		Boolean   @default(false)
+	locale					String
+  created_at			DateTime  @default(now())
+	created_by			String
+	updated_at			DateTime  @updatedAt
+	updated_by			String
+  courses					String[]
+	product_orders	OrderItems[]
+	product_carts		CartItems[]
+
+	@@map("products")
+}
+
+model Cart {
+	id									String 			@id @default(auto()) @map("_id") @db.ObjectId
+	created_at					DateTime  	@default(now())
+	updated_at					DateTime  	@updatedAt
+	currency    				String    	@default("eur")
+	tax_total						Int					@default(0)
+	discount_total			Int					@default(0)
+	sub_total						Int 				@default(0)
+	sub_total_with_tax	Int 				@default(0)
+	items								CartItems[]
+
+	@@map("carts")
+}
+
+model CartItems {
+	id						String 			@id @default(auto()) @map("_id") @db.ObjectId
+	cart_id				String			@db.ObjectId
+	product_id		String			@db.ObjectId
+	quantity			Int 				@default(1)
+	price					Int
+	discount			Int					@default(0)
+	tax						Int 				@default(0)
+	cart					Cart				@relation(fields: [cart_id], references: [id], onDelete: Cascade)
+	product				Product			@relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+	@@unique([cart_id, product_id])
+
+	@@map("cart_items")
+}
+
+model Order {
+	id									String 			@id @default(auto()) @map("_id") @db.ObjectId
+	created_at					DateTime  	@default(now())
+	updated_at					DateTime  	@updatedAt
+	currency    				String    	@default("eur")
+	type								String?
+	status							OrderStatus @default(PENDING)
+	customer_uuid				String
+	customer_email			String
+	customer_stripe_id	String?
+	tax_total						Int					@default(0)
+	discount_total			Int					@default(0)
+	sub_total						Int 				@default(0)
+	sub_total_with_tax	Int 				@default(0)
+	items								OrderItems[]
+	payment							Payment?
+
+	@@map("orders")
+}
+
+model OrderItems {
+	id						String 			@id @default(auto()) @map("_id") @db.ObjectId
+	order_id			String			@db.ObjectId
+	product_id		String			@db.ObjectId
+	quantity			Int 				@default(1)
+	price					Int
+	discount			Int					@default(0)
+	tax						Int 				@default(0)
+	order					Order				@relation(fields: [order_id], references: [id], onDelete: Cascade)
+	product				Product			@relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+	@@unique([order_id, product_id])
+
+	@@map("order_items")
+}
+
+model Payment {
+	id							String 				@id @default(auto()) @map("_id") @db.ObjectId
+	created_at   		DateTime      @default(now())
+  updated_at   		DateTime      @default(now()) @updatedAt
+	status      		PaymentStatus	@default(PENDING)
+	value       		Int
+	type						PaymentType   @default(SEPA)
+	method_id			 	String				@db.ObjectId
+	customer_id 		String?
+	payment_id  		String?
+	order_id 				String				@unique @db.ObjectId
+	order       		Order				  @relation(fields: [order_id], references: [id])
+	payment_method 	PaymentMethod	@relation(fields: [method_id], references: [id])
+
+	@@map("payments")
+}
+
+model PaymentMethod {
+	id						String 				@id @default(auto()) @map("_id") @db.ObjectId
+	name					String
+	description		String
+	icon					String
+	instructions	String?
+	created_at   	DateTime      @default(now())
+  updated_at   	DateTime      @updatedAt
+	is_manual    	Boolean
+	gateway				String
+	active				Boolean				@default(true)
+	locale				String				@default("pt")
+	payments    	Payment[]
+
+	@@map("payments_methods")
+}
+
+model Testimonial {
+	id          String    @id @default(auto()) @map("_id") @db.ObjectId
+	avatar			String
+	name				String
+	title				String
+	quote				String
+	locale			String
+
+	@@map("testimonials")
+}
+
+model Faq {
+	id          String    @id @default(auto()) @map("_id") @db.ObjectId
+	question		String
+	answer			String
+	order				Int
+	locale			String
+
+	@@map("faqs")
+}
+
+enum OrderStatus {
+	PENDING
+	COMPLETED
+	ARCHIVED
+	CANCELLED
+	REQUIRES_ACTION
+}
+
+enum PaymentStatus {
+	PAID
+	PENDING
+	AWAITING
+	REFUNDED
+	CANCELLED
+	ERROR
+}
+
+enum PaymentType {
+	CC
+	SEPA
+	PAYPAL
+	BOLETO
+	PIX
+}
