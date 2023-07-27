@@ -28,6 +28,7 @@ model User {
 	member_of         CourseMember[]
 	progress					LessonProgress[]
 	assignments				StudentAssignment[]
+	tasks							Task[]
 
 	@@map("users")
 }
@@ -35,11 +36,12 @@ model User {
 model CourseMember {
 	id					 	String				@id @default(auto()) @map("_id") @db.ObjectId
   created_at   	DateTime      @default(now())
-	last_activity DateTime?
   user_uuid     String
   course_id     String				@db.ObjectId
 	certification	Boolean				@default(false)
 	facilitation	Boolean				@default(false)
+	last_activity DateTime?
+	progress			Int						@default(0)
   role         	CourseRole
   user         	User          @relation(fields: [user_uuid], references: [uuid], onDelete: Cascade)
   course       	Course        @relation(fields: [course_id], references: [id], onDelete: Cascade)
@@ -55,7 +57,7 @@ model Course {
   id					String					@id @default(auto()) @map("_id") @db.ObjectId
   name        String
   description String
-  slug        String
+  slug        String					@unique
 	image				String?
 	published   Boolean					@default(false)
 	deleted			Boolean					@default(false)
@@ -64,6 +66,8 @@ model Course {
 	modules			Module[]
   lessons     Lesson[]
 	members     CourseMember[]
+	completed		LessonProgress[]
+	tasks 			Task[]
 
 	@@map("courses")
 }
@@ -71,7 +75,7 @@ model Course {
 model Module {
 	id					 	 String		@id @default(auto()) @map("_id") @db.ObjectId
   name           String
-	slug           String
+	slug           String		@unique
 	pos						 Int			@default(0)
 	deleted				 Boolean	@default(false)
 	course_id      String		@db.ObjectId
@@ -89,7 +93,7 @@ model Module {
 model Lesson {
   id					 	 String								@id @default(auto()) @map("_id") @db.ObjectId
   name           String
-  slug           String
+  slug           String								@unique
 	pos						 Int									@default(0)
   course_id      String								@db.ObjectId
 	module_id      String								@db.ObjectId
@@ -117,13 +121,16 @@ model Lesson {
 model LessonProgress {
 	id						String	 @id @default(auto()) @map("_id") @db.ObjectId
 	user_uuid     String
+	course_id			String	 @db.ObjectId
 	lesson_id   	String	 @db.ObjectId
 	completed_at 	DateTime @default(now())
   user        	User     @relation(fields: [user_uuid], references: [uuid], onDelete: Cascade)
+	course      	Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
   lesson      	Lesson   @relation(fields: [lesson_id], references: [id], onDelete: Cascade)
 
   @@unique([user_uuid, lesson_id])
   @@index([user_uuid])
+	@@index([course_id])
   @@index([lesson_id])
 
 	@@map("lesson_progress")
@@ -202,6 +209,27 @@ model Link {
 	@@index([assignment_id])
 
 	@@map("links")
+}
+
+model Task {
+	id						String	 		@id @default(auto()) @map("_id") @db.ObjectId
+	title					String
+	status				String
+	label					String
+	priority			String
+	course_id			String			@db.ObjectId
+	object_id			String			@db.ObjectId
+	created_by   	String
+	created_at		DateTime 		@default(now())
+	updated_by   	String
+	updated_at		DateTime		@updatedAt
+	user         	User        @relation(fields: [created_by], references: [uuid], onDelete: Cascade)
+	course       	Course      @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@unique([object_id, created_by])
+	@@index([created_by])
+
+	@@map("tasks")
 }
 
 enum CourseRole {
